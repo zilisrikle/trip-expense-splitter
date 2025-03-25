@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅行AA计算器</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: #F5F5F7;
+            color: #1D1D1F;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        }
+        
+        .apple-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .apple-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+        
+        .apple-input {
+            background: #FFFFFF;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #1D1D1F;
+            transition: all 0.2s ease;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+        
+        .apple-input:focus {
+            border-color: #0066CC;
+            box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.1);
+            outline: none;
+        }
+        
+        .apple-button {
+            background: #0066CC;
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+        
+        .apple-button:hover {
+            background: #0077ED;
+            transform: translateY(-1px);
+        }
+        
+        .apple-button:active {
+            transform: translateY(0);
+        }
+        
+        .apple-button.secondary {
+            background: rgba(0, 102, 204, 0.1);
+            color: #0066CC;
+        }
+        
+        .apple-button.secondary:hover {
+            background: rgba(0, 102, 204, 0.15);
+        }
+        
+        .apple-select {
+            background: #FFFFFF;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #1D1D1F;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23666666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
+        }
+        
+        .apple-select:focus {
+            border-color: #0066CC;
+            box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.1);
+            outline: none;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: #FFFFFF;
+            border-radius: 20px;
+            padding: 32px;
+            width: 90%;
+            max-width: 560px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+        
+        .tab-active {
+            color: #0066CC;
+            font-weight: 600;
+            position: relative;
+        }
+        
+        .tab-active::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #0066CC;
+            border-radius: 1px;
+        }
+        
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            background: linear-gradient(135deg, #0066CC 0%, #5856D6 100%);
+            color: white;
+            border-radius: 16px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        
+        .chart-container {
+            position: relative;
+            margin-top: 24px;
+        }
+        
+        .member-expense-card {
+            padding: 16px;
+            border-radius: 12px;
+            background: #FFFFFF;
+            margin-bottom: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .member-expense-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .expense-type-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            background: rgba(0, 102, 204, 0.1);
+            color: #0066CC;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-[#1D1D1F]">旅行AA计算器</h1>
+            <p class="text-[#86868B] mt-1">轻松管理旅行费用，让每个人都开心</p>
+        </div>
+        <button onclick="showAddExpenseModal()" class="apple-button">
+            <i class="ri-add-line mr-2"></i>添加费用
+        </button>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 左侧：费用明细 -->
+        <div class="lg:col-span-2">
+            <div class="flex space-x-8 mb-6">
+                <button onclick="showExpenseDetails()" class="tab-active text-lg" id="expenseDetailsTab">费用明细</button>
+                <button onclick="showSettlement()" class="text-lg text-[#86868B]" id="settlementTab">债务清算</button>
+            </div>
+
+            <!-- 费用明细页面 -->
+            <div id="expenseDetails">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="stat-card">
+                        <span class="text-sm opacity-80">总费用</span>
+                        <span class="stat-value" id="totalExpense">¥0.00</span>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #34C759 0%, #30B8FF 100%)">
+                        <span class="text-sm opacity-80">人均费用</span>
+                        <span class="stat-value" id="averageExpense">¥0.00</span>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #FF2D55 0%, #FF9500 100%)">
+                        <span class="text-sm opacity-80">待结算金额</span>
+                        <span class="stat-value" id="pendingAmount">¥0.00</span>
+                    </div>
+                </div>
+
+                <!-- 成员费用概览 -->
+                <div class="apple-card p-6 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">成员费用概览</h3>
+                        <div class="flex space-x-2">
+                            <button class="apple-button secondary text-sm" onclick="showMemberModal()">
+                                <i class="ri-user-settings-line mr-1"></i>管理成员
+                            </button>
+                        </div>
+                    </div>
+                    <div id="memberExpenses" class="space-y-3">
+                        <!-- 由JavaScript填充 -->
+                    </div>
+                </div>
+
+                <!-- 费用统计图表 -->
+                <div class="apple-card p-6 mb-6">
+                    <h3 class="text-lg font-semibold mb-4">费用统计</h3>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-sm text-[#86868B] mb-2">按类型分布</h4>
+                            <canvas id="expenseTypeChart"></canvas>
+                        </div>
+                        <div>
+                            <h4 class="text-sm text-[#86868B] mb-2">每日费用趋势</h4>
+                            <canvas id="expenseTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 筛选器 -->
+                <div class="apple-card p-6 mb-6">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <select id="memberFilter" class="apple-select">
+                            <option value="">所有成员</option>
+                        </select>
+                        <select id="filterType" class="apple-select">
+                            <option value="">所有类型</option>
+                            <option value="住宿">住宿</option>
+                            <option value="餐饮">餐饮</option>
+                            <option value="交通">交通</option>
+                            <option value="门票">门票</option>
+                            <option value="购物">购物</option>
+                            <option value="其他">其他</option>
+                        </select>
+                        <input type="date" id="startDate" class="apple-input" placeholder="开始日期">
+                        <input type="date" id="endDate" class="apple-input" placeholder="结束日期">
+                    </div>
+                </div>
+
+                <!-- 费用列表 -->
+                <div id="expenseList" class="space-y-4">
+                    <!-- 由JavaScript填充 -->
+                </div>
+            </div>
+
+            <!-- 债务清算页面 -->
+            <div id="settlement" class="hidden">
+                <div class="apple-card p-6 mb-6">
+                    <h3 class="text-lg font-semibold mb-4">个人收支概览</h3>
+                    <div id="memberBalances" class="space-y-3">
+                        <!-- 由JavaScript填充 -->
+                    </div>
+                </div>
+
+                <div class="apple-card p-6">
+                    <h3 class="text-lg font-semibold mb-4">最优结算方案</h3>
+                    <div id="settlementList" class="space-y-3">
+                        <!-- 由JavaScript填充 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：统计信息 -->
+        <div class="lg:block">
+            <div class="apple-card p-6 sticky top-6">
+                <h3 class="text-lg font-semibold mb-4">支出分析</h3>
+                <div class="space-y-6">
+                    <!-- 按成员支出排名 -->
+                    <div>
+                        <h4 class="text-sm text-[#86868B] mb-3">成员支出排名</h4>
+                        <div id="memberRanking" class="space-y-3">
+                            <!-- 由JavaScript填充 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 支出类型占比 -->
+                    <div>
+                        <h4 class="text-sm text-[#86868B] mb-3">支出类型占比</h4>
+                        <canvas id="expenseTypePieChart"></canvas>
+                    </div>
+                    
+                    <!-- 每日支出趋势 -->
+                    <div>
+                        <h4 class="text-sm text-[#86868B] mb-3">每日支出趋势</h4>
+                        <canvas id="dailyExpenseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加费用模态框 -->
+    <div id="addExpenseModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold">添加费用</h2>
+                <button onclick="hideAddExpenseModal()" class="text-[#86868B] hover:text-[#1D1D1F]">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <form id="expenseForm" class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-[#86868B] mb-2">金额</label>
+                        <input type="number" id="expenseAmount" name="amount" class="apple-input w-full" required step="0.01" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-[#86868B] mb-2">币种</label>
+                        <select name="currency" id="expenseCurrency" class="apple-select w-full" required>
+                            <option value="CNY">人民币 (CNY)</option>
+                            <option value="USD">美元 (USD)</option>
+                            <option value="VND">越南盾 (VND)</option>
+                            <option value="THB">泰铢 (THB)</option>
+                            <option value="NPR">尼泊尔卢比 (NPR)</option>
+                            <option value="MYR">马来西亚林吉特 (MYR)</option>
+                            <option value="SGD">新加坡元 (SGD)</option>
+                            <option value="KRW">韩元 (KRW)</option>
+                            <option value="JPY">日元 (JPY)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-[#86868B] mb-2">类型</label>
+                        <select name="type" class="apple-select w-full" required>
+                            <option value="住宿">住宿</option>
+                            <option value="餐饮">餐饮</option>
+                            <option value="交通">交通</option>
+                            <option value="门票">门票</option>
+                            <option value="购物">购物</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-[#86868B] mb-2">支付方式</label>
+                        <select name="paymentMethod" class="apple-select w-full" required>
+                            <option value="现金">现金</option>
+                            <option value="信用卡">信用卡</option>
+                            <option value="支付宝">支付宝</option>
+                            <option value="微信">微信</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm text-[#86868B] mb-2">支付人</label>
+                    <select name="payer" id="payerSelect" class="apple-select w-full" required>
+                        <!-- 由JavaScript填充 -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-[#86868B] mb-2">分摊明细</label>
+                    <div id="participantsList" class="space-y-3 max-h-48 overflow-y-auto">
+                        <!-- 由JavaScript填充 -->
+                    </div>
+                    <div id="totalSharesDisplay" class="text-right mt-2 text-sm font-medium"></div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="hideAddExpenseModal()" class="apple-button secondary">取消</button>
+                    <button type="submit" class="apple-button">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 成员管理模态框 -->
+    <div id="memberModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold">成员管理</h2>
+                <button onclick="hideMemberModal()" class="text-[#86868B] hover:text-[#1D1D1F]">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <div id="memberList" class="space-y-4 mb-6">
+                <!-- 由JavaScript填充 -->
+            </div>
+            <div class="flex justify-between">
+                <button onclick="addNewMember()" class="apple-button secondary">
+                    <i class="ri-user-add-line mr-2"></i>添加成员
+                </button>
+                <div class="space-x-3">
+                    <button onclick="hideMemberModal()" class="apple-button secondary">取消</button>
+                    <button onclick="saveMemberChanges()" class="apple-button">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
