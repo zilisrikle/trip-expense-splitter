@@ -1,143 +1,130 @@
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
-const app = express();
-const port = 3000;
+const { MongoClient, ObjectId } = require('mongodb');
+const path = require('path');
 
-// Middleware
+const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// In-memory storage
-let expenses = [];
+// MongoDB连接URL
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://tianyihan99:VuvpeTfweyVWEi81@cluster0.mongodb.net/trip-expenses?retryWrites=true&w=majority';
+const dbName = 'trip-expenses';
 
-// Currency exchange rates
-const exchangeRates = {
-    CNY: 1,
-    USD: 7.2,
-    VND: 0.0003,
-    THB: 0.2,
-    NPR: 0.06,
-    MYR: 1.5,
-    SGD: 5.3,
-    KRW: 0.0054,
-    JPY: 0.048
-};
+let db;
 
-// Helper function to convert to CNY
-function convertToCNY(amount, currency) {
-    return amount * exchangeRates[currency];
+// 连接到MongoDB
+async function connectToMongo() {
+    try {
+        const client = await MongoClient.connect(MONGODB_URI);
+        db = client.db(dbName);
+        console.log('Connected to MongoDB');
+        
+        // 确保集合和索引存在
+        await db.collection('expenses').createIndex({ date: 1 });
+        await db.collection('participants').createIndex({ name: 1 });
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+    }
 }
 
-// API Routes
-app.post('/api/expenses', (req, res) => {
-    const expense = {
-        ...req.body,
-        id: expenses.length + 1,
-        date: new Date()
-    };
-    expenses.push(expense);
-    res.json(expense);
+connectToMongo();
+
+// API路由
+app.get('/api/participants', async (req, res) => {
+    try {
+        const participants = await db.collection('participants').find().toArray();
+        res.json(participants);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-app.get('/api/expenses', (req, res) => {
-    let filteredExpenses = [...expenses];
-    
-    // Apply filters
-    if (req.query.userId) {
-        const userId = parseInt(req.query.userId);
-        filteredExpenses = filteredExpenses.filter(e => 
-            e.payerId === userId || e.participants.some(p => p.userId === userId)
-        );
-    }
-    
-    if (req.query.type) {
-        filteredExpenses = filteredExpenses.filter(e => e.type === req.query.type);
-    }
-    
-    if (req.query.startDate) {
-        const startDate = new Date(req.query.startDate);
-        filteredExpenses = filteredExpenses.filter(e => new Date(e.date) >= startDate);
-    }
-    
-    if (req.query.endDate) {
-        const endDate = new Date(req.query.endDate);
-        filteredExpenses = filteredExpenses.filter(e => new Date(e.date) <= endDate);
-    }
-    
-    res.json(filteredExpenses);
-});
-
-app.get('/api/settlements', (req, res) => {
-    // Calculate balances for each member
-    const balances = new Map();
-    
-    // Process all expenses
-    expenses.forEach(expense => {
-        const totalInCNY = convertToCNY(expense.amount, expense.currency);
-        
-        // Add payment amount to payer's balance
-        const payerId = expense.payerId;
-        balances.set(payerId, (balances.get(payerId) || 0) + totalInCNY);
-        
-        // Subtract shares from participants' balances
-        expense.participants.forEach(participant => {
-            const shareInCNY = convertToCNY(participant.share, expense.currency);
-            balances.set(participant.userId, (balances.get(participant.userId) || 0) - shareInCNY);
+app.post('/api/participants', async (req, res) => {
+    try {
+        const result = await db.collection('participants').insertOne({
+            name: req.body.name,
+            createdAt: new Date()
         });
-    });
-    
-    // Convert balances to array format
-    const balanceArray = Array.from(balances.entries()).map(([userId, balance]) => ({
-        userId,
-        balance: parseFloat(balance.toFixed(2))
-    }));
-    
-    // Calculate optimal settlements
-    const settlements = calculateOptimalSettlements(balanceArray);
-    
-    res.json({
-        balances: balanceArray,
-        settlements
-    });
+        res.json({ id: result.insertedId });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
-function calculateOptimalSettlements(balances) {
-    const settlements = [];
-    const debtors = balances.filter(b => b.balance < 0).sort((a, b) => a.balance - b.balance);
-    const creditors = balances.filter(b => b.balance > 0).sort((a, b) => b.balance - a.balance);
-    
-    let i = 0, j = 0;
-    while (i < debtors.length && j < creditors.length) {
-        const debt = Math.abs(debtors[i].balance);
-        const credit = creditors[j].balance;
-        const amount = Math.min(debt, credit);
-        
-        if (amount > 0.01) { // Only add settlement if amount is significant
-            settlements.push({
-                from: debtors[i].userId,
-                to: creditors[j].userId,
-                amount: parseFloat(amount.toFixed(2))
-            });
+app.delete('/api/participants/:id', async (req, res) => {
+    try {
+        await db.collection('participants').deleteOne({
+            _id: new ObjectId(req.params.id)
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/expenses', async (req, res) => {
+    try {
+        const query = {};
+        if (req.query.participant) {
+            query['participants.userId'] = parseInt(req.query.participant);
+        }
+        if (req.query.type) {
+            query.type = req.query.type;
+        }
+        if (req.query.startDate || req.query.endDate) {
+            query.date = {};
+            if (req.query.startDate) {
+                query.date.$gte = new Date(req.query.startDate);
+            }
+            if (req.query.endDate) {
+                query.date.$lte = new Date(req.query.endDate);
+            }
         }
         
-        debtors[i].balance += amount;
-        creditors[j].balance -= amount;
+        const expenses = await db.collection('expenses')
+            .find(query)
+            .sort({ date: -1 })
+            .toArray();
         
-        if (Math.abs(debtors[i].balance) < 0.01) i++;
-        if (Math.abs(creditors[j].balance) < 0.01) j++;
+        res.json(expenses);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-    
-    return settlements;
-}
+});
 
-// Serve the main page
-app.get('/', (req, res) => {
+app.post('/api/expenses', async (req, res) => {
+    try {
+        const expense = {
+            ...req.body,
+            date: new Date(req.body.date),
+            createdAt: new Date()
+        };
+        const result = await db.collection('expenses').insertOne(expense);
+        res.json({ id: result.insertedId });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/expenses/:id', async (req, res) => {
+    try {
+        await db.collection('expenses').deleteOne({
+            _id: new ObjectId(req.params.id)
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 所有其他路由返回index.html
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
