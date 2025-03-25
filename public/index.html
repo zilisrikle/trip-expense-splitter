@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>旅行AA计算器</title>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         body {
             background: #F5F5F7;
@@ -181,6 +179,15 @@
             color: #0066CC;
             margin-right: 8px;
         }
+        
+        .error-message {
+            display: none;
+            background-color: #ff3b30;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
     </style>
 </head>
 <body class="p-6">
@@ -320,6 +327,94 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- 错误消息显示区域 -->
+    <div id="error-message" class="error-message"></div>
+
+    <!-- 添加成员表单 -->
+    <div class="apple-card p-4 mb-6">
+        <h2 class="text-xl font-semibold mb-4">添加成员</h2>
+        <form id="addParticipantForm" class="space-y-4">
+            <div>
+                <input type="text" id="participantName" 
+                       class="w-full p-2 border rounded" 
+                       placeholder="输入成员姓名">
+            </div>
+            <button type="submit" 
+                    class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
+                添加成员
+            </button>
+        </form>
+    </div>
+
+    <!-- 成员列表 -->
+    <div class="apple-card p-4 mb-6">
+        <h2 class="text-xl font-semibold mb-4">成员列表</h2>
+        <div id="participantsList" class="space-y-2"></div>
+    </div>
+
+    <!-- 添加费用表单 -->
+    <div class="apple-card p-4 mb-6">
+        <h2 class="text-xl font-semibold mb-4">添加费用</h2>
+        <form id="addExpenseForm" class="space-y-4">
+            <div>
+                <input type="text" id="expenseDescription" 
+                       class="w-full p-2 border rounded" 
+                       placeholder="费用描述">
+            </div>
+            <div class="flex space-x-2">
+                <input type="number" id="expenseAmount" 
+                       class="flex-1 p-2 border rounded" 
+                       placeholder="金额" 
+                       step="0.01">
+                <select id="expenseCurrency" class="p-2 border rounded">
+                    <option value="CNY">人民币 (CNY)</option>
+                    <option value="USD">美元 (USD)</option>
+                    <option value="JPY">日元 (JPY)</option>
+                    <option value="EUR">欧元 (EUR)</option>
+                </select>
+            </div>
+            <div>
+                <select id="expenseType" class="w-full p-2 border rounded">
+                    <option value="餐饮">餐饮</option>
+                    <option value="住宿">住宿</option>
+                    <option value="交通">交通</option>
+                    <option value="购物">购物</option>
+                    <option value="娱乐">娱乐</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+            <div>
+                <select id="expensePayer" class="w-full p-2 border rounded">
+                    <!-- 将由JavaScript动态填充 -->
+                </select>
+            </div>
+            <div>
+                <input type="date" id="expenseDate" 
+                       class="w-full p-2 border rounded" 
+                       value="">
+            </div>
+            <div id="expenseParticipants" class="space-y-2 border rounded p-4">
+                <!-- 将由JavaScript动态填充 -->
+            </div>
+            <button type="submit" 
+                    class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
+                添加费用
+            </button>
+        </form>
+    </div>
+
+    <!-- 费用列表 -->
+    <div class="apple-card p-4 mb-6">
+        <h2 class="text-xl font-semibold mb-4">费用列表</h2>
+        <div id="expensesList" class="space-y-2"></div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="apple-card p-4">
+        <h2 class="text-xl font-semibold mb-4">统计信息</h2>
+        <div id="statistics"></div>
     </div>
 
     <!-- 添加费用模态框 -->
